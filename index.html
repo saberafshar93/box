@@ -19,12 +19,9 @@
             padding: 20px;
             margin-top: 20px;
         }
-        #login-section, #name-section {
+        .section {
             text-align: center;
             margin-bottom: 20px;
-        }
-        #chat-section {
-            display: none;
         }
         #messages {
             height: 300px;
@@ -60,9 +57,6 @@
             border: none;
             cursor: pointer;
         }
-        #send-btn:hover {
-            background-color: #45a049;
-        }
         #logout-btn {
             background-color: #f44336;
             color: white;
@@ -70,18 +64,15 @@
             cursor: pointer;
             margin-top: 10px;
         }
-        #logout-btn:hover {
-            background-color: #d32f2f;
-        }
         .hidden {
-            display: none;
+            display: none !important;
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
         <!-- بخش ورود با کد -->
-        <div id="login-section">
+        <div id="login-section" class="section">
             <h2>ورود به چت آنلاین</h2>
             <p>لطفاً کد 5 رقمی را وارد کنید:</p>
             <input type="password" id="access-code" placeholder="کد دسترسی">
@@ -89,14 +80,14 @@
         </div>
 
         <!-- بخش وارد کردن نام -->
-        <div id="name-section" class="hidden">
+        <div id="name-section" class="section hidden">
             <h2>لطفاً نام خود را وارد کنید</h2>
             <input type="text" id="user-name" placeholder="نام شما">
             <button onclick="setUserName()">تایید</button>
         </div>
 
         <!-- بخش چت اصلی -->
-        <div id="chat-section" class="hidden">
+        <div id="chat-section" class="section hidden">
             <h2>چت آنلاین - <span id="current-user"></span></h2>
             <div id="messages"></div>
             <input type="text" id="message-input" placeholder="پیام خود را بنویسید...">
@@ -109,24 +100,22 @@
     <script>
         // کد دسترسی
         const ACCESS_CODE = "12345";
-        
-        // آدرس فایل data.csv در گیت هاب
-        const CSV_URL = "https://raw.githubusercontent.com/username/repo/main/data.csv";
-        const CSV_EDIT_URL = "https://api.github.com/repos/username/repo/contents/data.csv";
-        
-        // توکن دسترسی گیت هاب (برای ویرایش فایل)
-        const GITHUB_TOKEN = "your_github_token"; // باید جایگزین کنید
-        
-        // متغیرهای全局
         let currentUser = "";
         let refreshInterval;
-        
+
+        // نمایش بخش مورد نظر
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionId).classList.remove('hidden');
+        }
+
         // بررسی کد دسترسی
         function checkAccessCode() {
             const code = document.getElementById("access-code").value;
             if (code === ACCESS_CODE) {
-                document.getElementById("login-section").classList.add("hidden");
-                document.getElementById("name-section").classList.remove("hidden");
+                showSection("name-section");
             } else {
                 alert("کد دسترسی اشتباه است!");
             }
@@ -134,174 +123,78 @@
         
         // تنظیم نام کاربر
         function setUserName() {
-            const userName = document.getElementById("user-name").value.trim();
-            if (userName === "") {
+            currentUser = document.getElementById("user-name").value.trim();
+            if (!currentUser) {
                 alert("لطفاً نام خود را وارد کنید!");
                 return;
             }
             
-            currentUser = userName;
-            document.getElementById("name-section").classList.add("hidden");
-            document.getElementById("chat-section").classList.remove("hidden");
-            document.getElementById("current-user").textContent = userName;
+            document.getElementById("current-user").textContent = currentUser;
+            showSection("chat-section");
+            loadTestMessages();
             
-            // شروع به روزرسانی خودکار پیام‌ها
-            loadMessages();
-            refreshInterval = setInterval(loadMessages, 3000); // هر 3 ثانیه پیام‌ها را بررسی کن
+            // برای تست هر 3 ثانیه پیام‌ها را بررسی کن
+            refreshInterval = setInterval(loadTestMessages, 3000);
         }
         
-        // بارگذاری پیام‌ها
-        async function loadMessages() {
-            try {
-                const response = await fetch(CSV_URL + "?t=" + new Date().getTime());
-                const csvData = await response.text();
-                displayMessages(csvData);
-            } catch (error) {
-                console.error("خطا در بارگذاری پیام‌ها:", error);
-                document.getElementById("status").textContent = "خطا در بارگذاری پیام‌ها";
-            }
+        // بارگذاری پیام‌های آزمایشی
+        function loadTestMessages() {
+            const messages = [
+                {sender: "سیستم", message: "به چت خوش آمدید!", time: new Date()},
+                {sender: "پشتیبانی", message: "این یک پیام آزمایشی است", time: new Date()},
+                {sender: currentUser, message: "شما با موفقیت وارد شدید", time: new Date()}
+            ];
+            displayMessages(messages);
         }
         
         // نمایش پیام‌ها
-        function displayMessages(csvData) {
+        function displayMessages(messages) {
             const messagesDiv = document.getElementById("messages");
-            messagesDiv.innerHTML = "";
-            
-            const lines = csvData.split("\n");
-            lines.forEach(line => {
-                if (line.trim() !== "") {
-                    const parts = line.split(",");
-                    if (parts.length >= 3) {
-                        const sender = parts[0];
-                        const message = parts[1];
-                        const time = parts[2];
-                        
-                        const messageDiv = document.createElement("div");
-                        messageDiv.className = "message";
-                        messageDiv.innerHTML = `
-                            <span class="sender">${sender}:</span> 
-                            <span>${message}</span>
-                            <div class="time">${new Date(time).toLocaleString("fa-IR")}</div>
-                        `;
-                        messagesDiv.appendChild(messageDiv);
-                    }
-                }
-            });
-            
+            messagesDiv.innerHTML = messages.map(msg => `
+                <div class="message">
+                    <span class="sender">${msg.sender}:</span> 
+                    <span>${msg.message}</span>
+                    <div class="time">${msg.time.toLocaleString("fa-IR")}</div>
+                </div>
+            `).join('');
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
         
-        // ارسال پیام
-        async function sendMessage() {
+        // ارسال پیام (نسخه آزمایشی)
+        function sendMessage() {
             const messageInput = document.getElementById("message-input");
             const message = messageInput.value.trim();
             
-            if (message === "") return;
+            if (!message) return;
             
-            try {
-                // دریافت محتوای فعلی فایل
-                const getResponse = await fetch(CSV_EDIT_URL, {
-                    headers: {
-                        "Authorization": `token ${GITHUB_TOKEN}`,
-                        "Accept": "application/vnd.github.v3+json"
-                    }
-                });
-                
-                const fileData = await getResponse.json();
-                let currentContent = "";
-                
-                try {
-                    currentContent = atob(fileData.content);
-                } catch (e) {
-                    console.log("فایل خالی است یا مشکل دارد");
-                }
-                
-                // اضافه کردن پیام جدید
-                const newMessage = `${currentUser},${message},${new Date().toISOString()}\n`;
-                const newContent = currentContent + newMessage;
-                
-                // آپدیت فایل در گیت هاب
-                const updateResponse = await fetch(CSV_EDIT_URL, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": `token ${GITHUB_TOKEN}`,
-                        "Accept": "application/vnd.github.v3+json",
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        message: "اضافه کردن پیام جدید",
-                        content: btoa(newContent),
-                        sha: fileData.sha
-                    })
-                });
-                
-                if (updateResponse.ok) {
-                    messageInput.value = "";
-                    loadMessages();
-                } else {
-                    throw new Error("خطا در ارسال پیام");
-                }
-            } catch (error) {
-                console.error("خطا در ارسال پیام:", error);
-                document.getElementById("status").textContent = "خطا در ارسال پیام";
-            }
+            // نمایش پیام کاربر
+            const messagesDiv = document.getElementById("messages");
+            messagesDiv.innerHTML += `
+                <div class="message">
+                    <span class="sender">${currentUser}:</span> 
+                    <span>${message}</span>
+                    <div class="time">${new Date().toLocaleString("fa-IR")}</div>
+                </div>
+            `;
+            
+            messageInput.value = "";
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            document.getElementById("status").textContent = "پیام ارسال شد (نسخه آزمایشی)";
+            setTimeout(() => document.getElementById("status").textContent = "", 2000);
         }
         
         // خروج از چت
         function logout() {
             clearInterval(refreshInterval);
-            document.getElementById("chat-section").classList.add("hidden");
-            document.getElementById("login-section").classList.remove("hidden");
             document.getElementById("access-code").value = "";
             document.getElementById("user-name").value = "";
             document.getElementById("message-input").value = "";
             currentUser = "";
+            showSection("login-section");
         }
-        
-        // پاک کردن پیام‌های قدیمی (هر 24 ساعت)
-        function clearOldMessages() {
-            const now = new Date();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            
-            // اگر ساعت 00:00 است، پیام‌ها را پاک کن
-            if (hours === 0 && minutes === 0) {
-                updateCsvContent("");
-            }
-        }
-        
-        // تابع برای آپدیت محتوای فایل CSV
-        async function updateCsvContent(newContent) {
-            try {
-                const getResponse = await fetch(CSV_EDIT_URL, {
-                    headers: {
-                        "Authorization": `token ${GITHUB_TOKEN}`,
-                        "Accept": "application/vnd.github.v3+json"
-                    }
-                });
-                
-                const fileData = await getResponse.json();
-                
-                await fetch(CSV_EDIT_URL, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": `token ${GITHUB_TOKEN}`,
-                        "Accept": "application/vnd.github.v3+json",
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        message: "پاک کردن پیام‌های قدیمی",
-                        content: btoa(newContent),
-                        sha: fileData.sha
-                    })
-                });
-            } catch (error) {
-                console.error("خطا در پاک کردن پیام‌ها:", error);
-            }
-        }
-        
-        // هر ساعت بررسی کن که آیا باید پیام‌ها پاک شوند
-        setInterval(clearOldMessages, 60 * 60 * 1000);
+
+        // ابتدا فقط بخش ورود را نمایش بده
+        showSection("login-section");
     </script>
 </body>
 </html>
