@@ -19,7 +19,7 @@
             padding: 20px;
             margin-top: 20px;
         }
-        #login-section {
+        #login-section, #name-section {
             text-align: center;
             margin-bottom: 20px;
         }
@@ -54,19 +54,33 @@
             border-radius: 5px;
             border: 1px solid #ddd;
         }
-        button {
+        #send-btn {
             background-color: #4CAF50;
             color: white;
             border: none;
             cursor: pointer;
         }
-        button:hover {
+        #send-btn:hover {
             background-color: #45a049;
+        }
+        #logout-btn {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #logout-btn:hover {
+            background-color: #d32f2f;
+        }
+        .hidden {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
+        <!-- بخش ورود با کد -->
         <div id="login-section">
             <h2>ورود به چت آنلاین</h2>
             <p>لطفاً کد 5 رقمی را وارد کنید:</p>
@@ -74,11 +88,20 @@
             <button onclick="checkAccessCode()">ورود</button>
         </div>
 
-        <div id="chat-section">
-            <h2>چت آنلاین</h2>
+        <!-- بخش وارد کردن نام -->
+        <div id="name-section" class="hidden">
+            <h2>لطفاً نام خود را وارد کنید</h2>
+            <input type="text" id="user-name" placeholder="نام شما">
+            <button onclick="setUserName()">تایید</button>
+        </div>
+
+        <!-- بخش چت اصلی -->
+        <div id="chat-section" class="hidden">
+            <h2>چت آنلاین - <span id="current-user"></span></h2>
             <div id="messages"></div>
             <input type="text" id="message-input" placeholder="پیام خود را بنویسید...">
-            <button onclick="sendMessage()">ارسال</button>
+            <button id="send-btn" onclick="sendMessage()">ارسال</button>
+            <button id="logout-btn" onclick="logout()">خروج از چت</button>
             <p id="status"></p>
         </div>
     </div>
@@ -94,17 +117,37 @@
         // توکن دسترسی گیت هاب (برای ویرایش فایل)
         const GITHUB_TOKEN = "your_github_token"; // باید جایگزین کنید
         
+        // متغیرهای全局
+        let currentUser = "";
+        let refreshInterval;
+        
         // بررسی کد دسترسی
         function checkAccessCode() {
             const code = document.getElementById("access-code").value;
             if (code === ACCESS_CODE) {
-                document.getElementById("login-section").style.display = "none";
-                document.getElementById("chat-section").style.display = "block";
-                loadMessages();
-                setInterval(loadMessages, 5000); // هر 5 ثانیه پیام‌ها را بررسی کن
+                document.getElementById("login-section").classList.add("hidden");
+                document.getElementById("name-section").classList.remove("hidden");
             } else {
                 alert("کد دسترسی اشتباه است!");
             }
+        }
+        
+        // تنظیم نام کاربر
+        function setUserName() {
+            const userName = document.getElementById("user-name").value.trim();
+            if (userName === "") {
+                alert("لطفاً نام خود را وارد کنید!");
+                return;
+            }
+            
+            currentUser = userName;
+            document.getElementById("name-section").classList.add("hidden");
+            document.getElementById("chat-section").classList.remove("hidden");
+            document.getElementById("current-user").textContent = userName;
+            
+            // شروع به روزرسانی خودکار پیام‌ها
+            loadMessages();
+            refreshInterval = setInterval(loadMessages, 3000); // هر 3 ثانیه پیام‌ها را بررسی کن
         }
         
         // بارگذاری پیام‌ها
@@ -127,15 +170,21 @@
             const lines = csvData.split("\n");
             lines.forEach(line => {
                 if (line.trim() !== "") {
-                    const [time, sender, message] = line.split(",");
-                    const messageDiv = document.createElement("div");
-                    messageDiv.className = "message";
-                    messageDiv.innerHTML = `
-                        <span class="sender">${sender}:</span> 
-                        <span>${message}</span>
-                        <div class="time">${new Date(time).toLocaleString("fa-IR")}</div>
-                    `;
-                    messagesDiv.appendChild(messageDiv);
+                    const parts = line.split(",");
+                    if (parts.length >= 3) {
+                        const sender = parts[0];
+                        const message = parts[1];
+                        const time = parts[2];
+                        
+                        const messageDiv = document.createElement("div");
+                        messageDiv.className = "message";
+                        messageDiv.innerHTML = `
+                            <span class="sender">${sender}:</span> 
+                            <span>${message}</span>
+                            <div class="time">${new Date(time).toLocaleString("fa-IR")}</div>
+                        `;
+                        messagesDiv.appendChild(messageDiv);
+                    }
                 }
             });
             
@@ -149,9 +198,6 @@
             
             if (message === "") return;
             
-            // نام کاربر (می‌توانید از کاربر بخواهید نام خود را وارد کند)
-            const sender = "کاربر";
-            
             try {
                 // دریافت محتوای فعلی فایل
                 const getResponse = await fetch(CSV_EDIT_URL, {
@@ -162,10 +208,16 @@
                 });
                 
                 const fileData = await getResponse.json();
-                const currentContent = atob(fileData.content);
+                let currentContent = "";
+                
+                try {
+                    currentContent = atob(fileData.content);
+                } catch (e) {
+                    console.log("فایل خالی است یا مشکل دارد");
+                }
                 
                 // اضافه کردن پیام جدید
-                const newMessage = `${new Date().toISOString()},${sender},${message}\n`;
+                const newMessage = `${currentUser},${message},${new Date().toISOString()}\n`;
                 const newContent = currentContent + newMessage;
                 
                 // آپدیت فایل در گیت هاب
@@ -195,13 +247,25 @@
             }
         }
         
+        // خروج از چت
+        function logout() {
+            clearInterval(refreshInterval);
+            document.getElementById("chat-section").classList.add("hidden");
+            document.getElementById("login-section").classList.remove("hidden");
+            document.getElementById("access-code").value = "";
+            document.getElementById("user-name").value = "";
+            document.getElementById("message-input").value = "";
+            currentUser = "";
+        }
+        
         // پاک کردن پیام‌های قدیمی (هر 24 ساعت)
         function clearOldMessages() {
             const now = new Date();
             const hours = now.getHours();
+            const minutes = now.getMinutes();
             
             // اگر ساعت 00:00 است، پیام‌ها را پاک کن
-            if (hours === 0) {
+            if (hours === 0 && minutes === 0) {
                 updateCsvContent("");
             }
         }
