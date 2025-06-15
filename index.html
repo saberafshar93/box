@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>چت گروهی آنلاین</title>
+    <title>چت آنلاین CSV</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -18,10 +18,6 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             padding: 20px;
             margin-top: 20px;
-        }
-        .section {
-            text-align: center;
-            margin-bottom: 20px;
         }
         #chat-box {
             height: 400px;
@@ -42,12 +38,10 @@
         .received {
             background-color: #e3f2fd;
             margin-right: auto;
-            border-top-left-radius: 0;
         }
         .sent {
             background-color: #dcf8c6;
             margin-left: auto;
-            border-top-right-radius: 0;
         }
         .message-info {
             display: flex;
@@ -55,12 +49,6 @@
             font-size: 0.8em;
             margin-top: 5px;
             color: #555;
-        }
-        .sender-name {
-            font-weight: bold;
-        }
-        .message-time {
-            font-style: italic;
         }
         .input-area {
             display: flex;
@@ -72,237 +60,186 @@
             border: 1px solid #ddd;
             border-radius: 5px;
         }
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
         #send-btn {
             background-color: #4CAF50;
             color: white;
-            border: none;
-            border-radius: 5px;
-            padding: 0 20px;
-            cursor: pointer;
         }
         #logout-btn {
             background-color: #f44336;
             color: white;
-            border: none;
-            border-radius: 5px;
-            padding: 8px 15px;
             margin-top: 10px;
-            cursor: pointer;
         }
         .hidden {
-            display: none !important;
-        }
-        .welcome-message {
-            text-align: center;
-            color: #666;
-            margin: 20px 0;
-            font-style: italic;
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="chat-container">
-        <!-- بخش ورود با کد -->
-        <div id="login-section" class="section">
-            <h2>ورود به چت گروهی</h2>
+        <!-- بخش ورود -->
+        <div id="login-section">
+            <h2>ورود به چت آنلاین</h2>
             <p>لطفاً کد 5 رقمی را وارد کنید:</p>
             <input type="password" id="access-code" placeholder="کد دسترسی">
             <button onclick="checkAccessCode()">ورود</button>
         </div>
 
-        <!-- بخش وارد کردن نام -->
-        <div id="name-section" class="section hidden">
-            <h2>لطفاً نام خود را وارد کنید</h2>
-            <input type="text" id="user-name" placeholder="نام نمایشی شما">
-            <button onclick="setUserName()">تایید</button>
-        </div>
-
-        <!-- بخش چت اصلی -->
-        <div id="chat-section" class="section hidden">
-            <h2>چت گروهی - <span id="current-user"></span></h2>
-            
-            <div id="chat-box">
-                <div class="welcome-message">
-                    به چت گروهی خوش آمدید. پیام خود را ارسال کنید...
-                </div>
-                <!-- پیام‌ها اینجا نمایش داده می‌شوند -->
-            </div>
-            
+        <!-- بخش چت -->
+        <div id="chat-section" class="hidden">
+            <h2>چت آنلاین - <span id="username-display"></span></h2>
+            <div id="chat-box"></div>
             <div class="input-area">
                 <input type="text" id="message-input" placeholder="پیام خود را بنویسید...">
                 <button id="send-btn" onclick="sendMessage()">ارسال</button>
             </div>
-            
             <button id="logout-btn" onclick="logout()">خروج از چت</button>
-            <p id="status"></p>
+            <p id="status-message"></p>
         </div>
     </div>
 
     <script>
-        // کد دسترسی
+        // تنظیمات
         const ACCESS_CODE = "12345";
+        const CSV_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/data.csv";
+        const GITHUB_TOKEN = "YOUR_GITHUB_TOKEN"; // نیاز به token با دسترسی repo
+        
+        // متغیرهای全局
         let currentUser = "";
+        let messageCount = 0;
         let refreshInterval;
-
-        // نمایش بخش مورد نظر
-        function showSection(sectionId) {
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.add('hidden');
-            });
-            document.getElementById(sectionId).classList.remove('hidden');
-        }
 
         // بررسی کد دسترسی
         function checkAccessCode() {
             const code = document.getElementById("access-code").value;
             if (code === ACCESS_CODE) {
-                showSection("name-section");
+                currentUser = prompt("لطفاً نام کاربری خود را وارد کنید:", "کاربر");
+                if (currentUser) {
+                    document.getElementById("login-section").classList.add("hidden");
+                    document.getElementById("chat-section").classList.remove("hidden");
+                    document.getElementById("username-display").textContent = currentUser;
+                    startChat();
+                }
             } else {
                 alert("کد دسترسی اشتباه است!");
             }
         }
-        
-        // تنظیم نام کاربر
-        function setUserName() {
-            currentUser = document.getElementById("user-name").value.trim();
-            if (!currentUser) {
-                alert("لطفاً نام خود را وارد کنید!");
-                return;
-            }
-            
-            document.getElementById("current-user").textContent = currentUser;
-            showSection("chat-section");
+
+        // شروع چت
+        function startChat() {
             loadMessages();
-            
-            // هر 3 ثانیه پیام‌های جدید را بررسی کن
-            refreshInterval = setInterval(loadMessages, 3000);
+            refreshInterval = setInterval(loadMessages, 3000); // هر 3 ثانیه پیام‌ها را بررسی کن
         }
-        
-        // بارگذاری پیام‌ها (نسخه آزمایشی)
-        function loadMessages() {
-            // اینجا در نسخه واقعی باید از سرور پیام‌ها را دریافت کنید
-            const testMessages = [
-                {
-                    id: 1,
-                    sender: "مدیر سیستم",
-                    message: "به چت گروهی خوش آمدید!",
-                    time: new Date(),
-                    type: "received"
-                },
-                {
-                    id: 2,
-                    sender: currentUser,
-                    message: "سلام به همه!",
-                    time: new Date(),
-                    type: "sent"
-                }
-            ];
-            
-            displayMessages(testMessages);
+
+        // بارگذاری پیام‌ها از فایل CSV
+        async function loadMessages() {
+            try {
+                const response = await fetch(CSV_URL + "?t=" + Date.now());
+                const csvData = await response.text();
+                displayMessages(parseCSV(csvData));
+            } catch (error) {
+                console.error("خطا در بارگذاری پیام‌ها:", error);
+                document.getElementById("status-message").textContent = "خطا در دریافت پیام‌ها";
+            }
         }
-        
-        // نمایش پیام‌ها در چت باکس
+
+        // تبدیل CSV به آرایه
+        function parseCSV(csv) {
+            return csv.split('\n')
+                .filter(line => line.trim() !== '')
+                .map(line => {
+                    const [timestamp, sender, message] = line.split(',');
+                    return { timestamp, sender, message };
+                });
+        }
+
+        // نمایش پیام‌ها
         function displayMessages(messages) {
             const chatBox = document.getElementById("chat-box");
+            chatBox.innerHTML = '';
             
-            // حذف پیام خوش‌آمدگویی اگر پیامی وجود دارد
-            if (messages.length > 0) {
-                const welcomeMsg = chatBox.querySelector('.welcome-message');
-                if (welcomeMsg) {
-                    welcomeMsg.remove();
-                }
-            }
-            
-            // اضافه کردن پیام‌های جدید
             messages.forEach(msg => {
-                // اگر پیام از قبل نمایش داده شده است، از اضافه کردن مجدد خودداری کنید
-                if (document.getElementById(`msg-${msg.id}`)) return;
-                
                 const messageDiv = document.createElement("div");
-                messageDiv.className = `message ${msg.type}`;
-                messageDiv.id = `msg-${msg.id}`;
+                messageDiv.className = `message ${msg.sender === currentUser ? 'sent' : 'received'}`;
                 messageDiv.innerHTML = `
                     <div class="message-text">${msg.message}</div>
                     <div class="message-info">
-                        <span class="sender-name">${msg.sender}</span>
-                        <span class="message-time">${formatTime(msg.time)}</span>
+                        <span>${msg.sender}</span>
+                        <span>${new Date(msg.timestamp).toLocaleString('fa-IR')}</span>
                     </div>
                 `;
                 chatBox.appendChild(messageDiv);
             });
             
-            // اسکرول به پایین
             chatBox.scrollTop = chatBox.scrollHeight;
         }
-        
-        // فرمت زمان
-        function formatTime(date) {
-            return date.toLocaleString("fa-IR", {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        }
-        
-        // ارسال پیام
-        function sendMessage() {
+
+        // ارسال پیام جدید
+        async function sendMessage() {
             const messageInput = document.getElementById("message-input");
             const message = messageInput.value.trim();
             
             if (!message) return;
             
-            // ایجاد پیام جدید
-            const newMessage = {
-                id: Date.now(),
-                sender: currentUser,
-                message: message,
-                time: new Date(),
-                type: "sent"
-            };
-            
-            // نمایش پیام در چت باکس
-            displayMessages([newMessage]);
-            
-            // در نسخه واقعی اینجا پیام باید به سرور ارسال شود
-            
-            messageInput.value = "";
-            document.getElementById("status").textContent = "پیام ارسال شد";
-            setTimeout(() => {
-                document.getElementById("status").textContent = "";
-            }, 2000);
-            
-            // شبیه‌سازی دریافت پاسخ (برای نسخه آزمایشی)
-            setTimeout(() => {
-                const replyMessage = {
-                    id: Date.now() + 1,
-                    sender: "کاربر دیگر",
-                    message: "پیام شما دریافت شد!",
-                    time: new Date(),
-                    type: "received"
-                };
-                displayMessages([replyMessage]);
-            }, 1000);
+            try {
+                // دریافت محتوای فعلی فایل
+                const response = await fetch(`https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/contents/data.csv`, {
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+                
+                const fileData = await response.json();
+                const currentContent = atob(fileData.content) || '';
+                
+                // اضافه کردن پیام جدید
+                const newMessage = `${new Date().toISOString()},${currentUser},${message}\n`;
+                const newContent = currentContent + newMessage;
+                
+                // آپدیت فایل در گیت‌هاب
+                const updateResponse = await fetch(`https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/contents/data.csv`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${GITHUB_TOKEN}`,
+                        'Accept': 'application/vnd.github.v3+json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: 'اضافه کردن پیام جدید',
+                        content: btoa(newContent),
+                        sha: fileData.sha
+                    })
+                });
+                
+                if (updateResponse.ok) {
+                    messageInput.value = '';
+                    document.getElementById("status-message").textContent = "پیام با موفقیت ارسال شد";
+                    setTimeout(() => {
+                        document.getElementById("status-message").textContent = '';
+                    }, 2000);
+                } else {
+                    throw new Error('خطا در ارسال پیام');
+                }
+            } catch (error) {
+                console.error('خطا:', error);
+                document.getElementById("status-message").textContent = "خطا در ارسال پیام";
+            }
         }
-        
+
         // خروج از چت
         function logout() {
             clearInterval(refreshInterval);
+            document.getElementById("chat-section").classList.add("hidden");
+            document.getElementById("login-section").classList.remove("hidden");
             document.getElementById("access-code").value = "";
-            document.getElementById("user-name").value = "";
-            document.getElementById("message-input").value = "";
-            document.getElementById("chat-box").innerHTML = `
-                <div class="welcome-message">
-                    به چت گروهی خوش آمدید. پیام خود را ارسال کنید...
-                </div>
-            `;
             currentUser = "";
-            showSection("login-section");
         }
-
-        // ابتدا فقط بخش ورود را نمایش بده
-        showSection("login-section");
     </script>
 </body>
 </html>
