@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>چت آنلاین</title>
+    <title>چت گروهی آنلاین</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -23,49 +23,80 @@
             text-align: center;
             margin-bottom: 20px;
         }
-        #messages {
-            height: 300px;
-            overflow-y: auto;
+        #chat-box {
+            height: 400px;
             border: 1px solid #ddd;
-            padding: 10px;
-            margin-bottom: 10px;
             border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            overflow-y: auto;
+            background-color: #fafafa;
         }
         .message {
-            margin-bottom: 10px;
-            padding: 8px;
-            border-radius: 5px;
-            background-color: #f0f0f0;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 70%;
+            word-wrap: break-word;
         }
-        .message .sender {
-            font-weight: bold;
-            color: #333;
+        .received {
+            background-color: #e3f2fd;
+            margin-right: auto;
+            border-top-left-radius: 0;
         }
-        .message .time {
+        .sent {
+            background-color: #dcf8c6;
+            margin-left: auto;
+            border-top-right-radius: 0;
+        }
+        .message-info {
+            display: flex;
+            justify-content: space-between;
             font-size: 0.8em;
-            color: #666;
+            margin-top: 5px;
+            color: #555;
         }
-        input, button {
-            padding: 8px;
-            margin: 5px 0;
-            border-radius: 5px;
+        .sender-name {
+            font-weight: bold;
+        }
+        .message-time {
+            font-style: italic;
+        }
+        .input-area {
+            display: flex;
+            gap: 10px;
+        }
+        #message-input {
+            flex: 1;
+            padding: 10px;
             border: 1px solid #ddd;
+            border-radius: 5px;
         }
         #send-btn {
             background-color: #4CAF50;
             color: white;
             border: none;
+            border-radius: 5px;
+            padding: 0 20px;
             cursor: pointer;
         }
         #logout-btn {
             background-color: #f44336;
             color: white;
             border: none;
-            cursor: pointer;
+            border-radius: 5px;
+            padding: 8px 15px;
             margin-top: 10px;
+            cursor: pointer;
         }
         .hidden {
             display: none !important;
+        }
+        .welcome-message {
+            text-align: center;
+            color: #666;
+            margin: 20px 0;
+            font-style: italic;
         }
     </style>
 </head>
@@ -73,7 +104,7 @@
     <div class="chat-container">
         <!-- بخش ورود با کد -->
         <div id="login-section" class="section">
-            <h2>ورود به چت آنلاین</h2>
+            <h2>ورود به چت گروهی</h2>
             <p>لطفاً کد 5 رقمی را وارد کنید:</p>
             <input type="password" id="access-code" placeholder="کد دسترسی">
             <button onclick="checkAccessCode()">ورود</button>
@@ -82,16 +113,26 @@
         <!-- بخش وارد کردن نام -->
         <div id="name-section" class="section hidden">
             <h2>لطفاً نام خود را وارد کنید</h2>
-            <input type="text" id="user-name" placeholder="نام شما">
+            <input type="text" id="user-name" placeholder="نام نمایشی شما">
             <button onclick="setUserName()">تایید</button>
         </div>
 
         <!-- بخش چت اصلی -->
         <div id="chat-section" class="section hidden">
-            <h2>چت آنلاین - <span id="current-user"></span></h2>
-            <div id="messages"></div>
-            <input type="text" id="message-input" placeholder="پیام خود را بنویسید...">
-            <button id="send-btn" onclick="sendMessage()">ارسال</button>
+            <h2>چت گروهی - <span id="current-user"></span></h2>
+            
+            <div id="chat-box">
+                <div class="welcome-message">
+                    به چت گروهی خوش آمدید. پیام خود را ارسال کنید...
+                </div>
+                <!-- پیام‌ها اینجا نمایش داده می‌شوند -->
+            </div>
+            
+            <div class="input-area">
+                <input type="text" id="message-input" placeholder="پیام خود را بنویسید...">
+                <button id="send-btn" onclick="sendMessage()">ارسال</button>
+            </div>
+            
             <button id="logout-btn" onclick="logout()">خروج از چت</button>
             <p id="status"></p>
         </div>
@@ -131,56 +172,118 @@
             
             document.getElementById("current-user").textContent = currentUser;
             showSection("chat-section");
-            loadTestMessages();
+            loadMessages();
             
-            // برای تست هر 3 ثانیه پیام‌ها را بررسی کن
-            refreshInterval = setInterval(loadTestMessages, 3000);
+            // هر 3 ثانیه پیام‌های جدید را بررسی کن
+            refreshInterval = setInterval(loadMessages, 3000);
         }
         
-        // بارگذاری پیام‌های آزمایشی
-        function loadTestMessages() {
-            const messages = [
-                {sender: "سیستم", message: "به چت خوش آمدید!", time: new Date()},
-                {sender: "پشتیبانی", message: "این یک پیام آزمایشی است", time: new Date()},
-                {sender: currentUser, message: "شما با موفقیت وارد شدید", time: new Date()}
+        // بارگذاری پیام‌ها (نسخه آزمایشی)
+        function loadMessages() {
+            // اینجا در نسخه واقعی باید از سرور پیام‌ها را دریافت کنید
+            const testMessages = [
+                {
+                    id: 1,
+                    sender: "مدیر سیستم",
+                    message: "به چت گروهی خوش آمدید!",
+                    time: new Date(),
+                    type: "received"
+                },
+                {
+                    id: 2,
+                    sender: currentUser,
+                    message: "سلام به همه!",
+                    time: new Date(),
+                    type: "sent"
+                }
             ];
-            displayMessages(messages);
+            
+            displayMessages(testMessages);
         }
         
-        // نمایش پیام‌ها
+        // نمایش پیام‌ها در چت باکس
         function displayMessages(messages) {
-            const messagesDiv = document.getElementById("messages");
-            messagesDiv.innerHTML = messages.map(msg => `
-                <div class="message">
-                    <span class="sender">${msg.sender}:</span> 
-                    <span>${msg.message}</span>
-                    <div class="time">${msg.time.toLocaleString("fa-IR")}</div>
-                </div>
-            `).join('');
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+            const chatBox = document.getElementById("chat-box");
+            
+            // حذف پیام خوش‌آمدگویی اگر پیامی وجود دارد
+            if (messages.length > 0) {
+                const welcomeMsg = chatBox.querySelector('.welcome-message');
+                if (welcomeMsg) {
+                    welcomeMsg.remove();
+                }
+            }
+            
+            // اضافه کردن پیام‌های جدید
+            messages.forEach(msg => {
+                // اگر پیام از قبل نمایش داده شده است، از اضافه کردن مجدد خودداری کنید
+                if (document.getElementById(`msg-${msg.id}`)) return;
+                
+                const messageDiv = document.createElement("div");
+                messageDiv.className = `message ${msg.type}`;
+                messageDiv.id = `msg-${msg.id}`;
+                messageDiv.innerHTML = `
+                    <div class="message-text">${msg.message}</div>
+                    <div class="message-info">
+                        <span class="sender-name">${msg.sender}</span>
+                        <span class="message-time">${formatTime(msg.time)}</span>
+                    </div>
+                `;
+                chatBox.appendChild(messageDiv);
+            });
+            
+            // اسکرول به پایین
+            chatBox.scrollTop = chatBox.scrollHeight;
         }
         
-        // ارسال پیام (نسخه آزمایشی)
+        // فرمت زمان
+        function formatTime(date) {
+            return date.toLocaleString("fa-IR", {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // ارسال پیام
         function sendMessage() {
             const messageInput = document.getElementById("message-input");
             const message = messageInput.value.trim();
             
             if (!message) return;
             
-            // نمایش پیام کاربر
-            const messagesDiv = document.getElementById("messages");
-            messagesDiv.innerHTML += `
-                <div class="message">
-                    <span class="sender">${currentUser}:</span> 
-                    <span>${message}</span>
-                    <div class="time">${new Date().toLocaleString("fa-IR")}</div>
-                </div>
-            `;
+            // ایجاد پیام جدید
+            const newMessage = {
+                id: Date.now(),
+                sender: currentUser,
+                message: message,
+                time: new Date(),
+                type: "sent"
+            };
+            
+            // نمایش پیام در چت باکس
+            displayMessages([newMessage]);
+            
+            // در نسخه واقعی اینجا پیام باید به سرور ارسال شود
             
             messageInput.value = "";
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-            document.getElementById("status").textContent = "پیام ارسال شد (نسخه آزمایشی)";
-            setTimeout(() => document.getElementById("status").textContent = "", 2000);
+            document.getElementById("status").textContent = "پیام ارسال شد";
+            setTimeout(() => {
+                document.getElementById("status").textContent = "";
+            }, 2000);
+            
+            // شبیه‌سازی دریافت پاسخ (برای نسخه آزمایشی)
+            setTimeout(() => {
+                const replyMessage = {
+                    id: Date.now() + 1,
+                    sender: "کاربر دیگر",
+                    message: "پیام شما دریافت شد!",
+                    time: new Date(),
+                    type: "received"
+                };
+                displayMessages([replyMessage]);
+            }, 1000);
         }
         
         // خروج از چت
@@ -189,6 +292,11 @@
             document.getElementById("access-code").value = "";
             document.getElementById("user-name").value = "";
             document.getElementById("message-input").value = "";
+            document.getElementById("chat-box").innerHTML = `
+                <div class="welcome-message">
+                    به چت گروهی خوش آمدید. پیام خود را ارسال کنید...
+                </div>
+            `;
             currentUser = "";
             showSection("login-section");
         }
